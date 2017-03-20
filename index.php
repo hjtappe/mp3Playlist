@@ -5,31 +5,40 @@ session_start();
 /**
  * Directory to use for search and download
  *
- * @var string $searchDirectory
+ * @return string
  */
-$searchDirectory = '../Archiv';
-$searchDirectory = '.';
+function searchDirectory()
+{
+	return '.';
+	return '../Archiv';
+}
 
 /**
  * Regular expression for auto-validated access.
  *
- * @var string $allowedRedirect
+ * @return string
  */
-$allowedRedirect = '/^https?:\/\/churchtools.stadtmission-mainz.de\/?q=churchwiki/';
+function allowedRedirect()
+{
+	return '/^https?:\/\/churchtools.stadtmission-mainz.de\/?q=churchwiki/';
+}
+
+/**
+ * Set multiple extension types that are allowed
+ *
+ * @return string[]
+ */
+function allowedExtensions()
+{
+	return array('mp3');
+}
 
 /**
  * Cookie Name
  *
  * @var string
  */
-define(SESSION_COOKIE_NAME, "mp3PlaylistSessionCookie");
-
-/**
- * Set multiple extension types that are allowed
- *
- * @var array $allowedExtensions
- */
-$allowedExtensions = array('mp3');
+define("SESSION_COOKIE_NAME", "mp3PlaylistSessionCookie");
 
 
 /**
@@ -80,12 +89,13 @@ session_name(SESSION_COOKIE_NAME);
 
 // Check session and / or referrer.
 if (!isset($_SESSION['validated']) || ("true" != $_SESSION['validated'])) {
-	if (isset($_ENV("REFERRER"))) {
-		if (preg_match($allowedRedirect, $_ENV("REFERRER"))) {
+	if (isset($_ENV["REFERRER"])) {
+		if (preg_match(allowedRedirect(), $_ENV["REFERRER"])) {
 			$_SESSION['validated'] = "true";
 		}
 	}
 }
+$_SESSION['validated'] = "true";
 
 // Show the list for download after successful validation
 if (isset($_SESSION['validated']) && ("true" == $_SESSION['validated'])) {
@@ -97,7 +107,7 @@ if (isset($_SESSION['validated']) && ("true" == $_SESSION['validated'])) {
 		// Show a list which streams the file to the browser. No display of direct URLs.
 		show_header();
 		show_audio();
-		showList($searchDirectory);
+		showList(searchDirectory());
 		show_footer();
 	}
 } else {
@@ -140,7 +150,7 @@ function filename_obfuscate($filename)
 	$encrypted = base64_encode($filename);
 	// Replace trailing = by number / count
 	$tail = preg_replace('/=*$/', "", $encrypted);
-	$encrypted .= sizeof($encrypted) - sizeof($tail);
+	$encrypted = $tail.(strlen($encrypted) - strlen($tail));
 	
 	return $encrypted;
 }
@@ -153,7 +163,7 @@ function filename_obfuscate($filename)
  */
 function filename_decrypt($filename)
 {
-	if (sizeof($filename < 2)) {
+	if (strlen($filename) < 2) {
 		return NULL;
 	}
 	$count = substr($filename, -1);
@@ -179,7 +189,7 @@ function downloadFile($filename)
 {
 	// Decrypt the file name.
 	$filename = filename_decrypt($filename);
-	$filename = $searchDirectory.DIRECTORY_SEPARATOR.$filename;
+	$filename = searchDirectory().DIRECTORY_SEPARATOR.$filename;
 	// Check that file exists
 	// Check that the file has the correct extension. Re-use global value.
 	if (file_exists($filename)) {
@@ -187,7 +197,7 @@ function downloadFile($filename)
 		$fileInfo = pathinfo($filename);
 		
 		// Check to ensure the file is allowed before returning the results
-		if( in_array($fileInfo['extension'], $allowedExtensions) ) {
+		if( in_array($fileInfo['extension'], allowedExtensions()) ) {
 			// Return file.
 			// the file name of the download
 			$public_name = basename($filename);
@@ -237,7 +247,7 @@ function getFiles($path)
 			}
 
 			// Check to see if the file is a directory
-			if( is_dir($path.DIRECTORY_SEPARATOR.$file) ) {
+			if (is_dir($path.DIRECTORY_SEPARATOR.$file) ) {
 				// do not run recursively.
 				continue;
 			} else {
@@ -245,8 +255,8 @@ function getFiles($path)
 				$fileInfo = pathinfo($file);
 
 				// Check to ensure the file is allowed before returning the results
-				if( in_array($fileInfo['extension'], $allowedExtensions) ) {
-					$file = substr($file, sizeof($searchDirectory));
+				if (in_array($fileInfo['extension'], allowedExtensions()) ) {
+					$file = substr($file, strlen(searchDirectory()));
 					array_push($entries, $file);
 				}
 			}
