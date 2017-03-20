@@ -1,3 +1,43 @@
+<?php
+// Start the session
+session_start();
+
+/**
+ * Directory to use for search and download
+ *
+ * @var string $searchDirectory
+ */
+$searchDirectory = '../Archiv';
+$searchDirectory = '.';
+
+/**
+ * Regular expression for auto-validated access.
+ *
+ * @var string $allowedRedirect
+ */
+$allowedRedirect = '/^https?:\/\/churchtools.stadtmission-mainz.de\/?q=churchwiki/';
+
+/**
+ * Cookie Name
+ *
+ * @var string
+ */
+define(SESSION_COOKIE_NAME, "mp3PlaylistSessionCookie");
+
+/**
+ * Set multiple extension types that are allowed
+ *
+ * @var array $allowedExtensions
+ */
+$allowedExtensions = array('mp3');
+
+
+/**
+ * Show the HTML header.
+ */
+function show_header()
+{
+?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
 
@@ -12,73 +52,72 @@
 .active a{color:#5DB0E6;text-decoration:none;}
 li a{color:#eeeedd;background:#333;padding:5px;display:block;}
 li a:hover{text-decoration:none;}
-</style>
+	</style>
     <script type="text/javascript" src="js/jquery-1.12.4.min.js"></script>
-    <script type="text/javascript">
-var audio;
-var playlist;
-var tracks;
-var current;
-
-$(document).ready(function() {
-  init();
-});
-function init(){
-    current = 0;
-    audio = $("audio");
-    playlist = $("#playlist");
-    tracks = playlist.find("li a");
-    len = tracks.length - 1;
-    audio[0].volume = .10;
-    audio[0].play();
-    playlist.find("a").click(function(e){
-        e.preventDefault();
-        link = $(this);
-        current = link.parent().index();
-        run(link, audio[0]);
-    });
-    audio[0].addEventListener("ended",function(e){
-        current++;
-        if(current == len){
-            current = 0;
-            link = playlist.find("a")[0];
-        }else{
-            link = playlist.find("a")[current];    
-        }
-        run($(link),audio[0]);
-    });
-}
-function run(link, player){
-        player.src = link.attr("href");
-        par = link.parent();
-        par.addClass("active").siblings().removeClass("active");
-        audio[0].load();
-        audio[0].play();
-}
-</script>
+    <script type="text/javascript" src="js/playlistHandler.js"></script>
 </head>
 <body>
-    <audio id="audio" preload="auto" tabindex="0" controls="" type="audio/mpeg">
-
-    </audio>
 <?php
-// TODO Check for a valid REFERRER
+}
 
-// TODO If found, start a session and save a value in the session
+/**
+ * Show the audio interface
+ */
+function show_audio()
+{
+?>
+    <audio
+    	id="audio"
+		preload="auto"
+		controls
+		volume="0.7"
+		type="audio/mp3"></audio>
+<?php
+}
 
-// Show a list which streams the file to the browser. No display of direct URLs.
-showList();
+// Setup the session.
+session_name(SESSION_COOKIE_NAME);
 
-// If the session contains the value, allow a download / stream
+// Check session and / or referrer.
+if (!isset($_SESSION['validated']) || ("true" != $_SESSION['validated'])) {
+	if (isset($_ENV("REFERRER"))) {
+		if (preg_match($allowedRedirect, $_ENV("REFERRER"))) {
+			$_SESSION['validated'] = "true";
+		}
+	}
+}
 
+// Show the list for download after successful validation
+if (isset($_SESSION['validated']) && ("true" == $_SESSION['validated'])) {
+	// Check if this is a download request
+	if (isset($_REQUEST['f'])) {
+		// If the session contains the value, allow a download / stream
+		downloadFile($_REQUEST['f']);
+	} else {
+		// Show a list which streams the file to the browser. No display of direct URLs.
+		show_header();
+		show_audio();
+		showList($searchDirectory);
+		show_footer();
+	}
+} else {
+	show_header();
+	show_rules();
+	show_footer();
+}
 
-function showList()
+/**
+ * Show a list of recordings
+ * 
+ * @param string $directory
+ */
+function showList($directory)
 {
 	$active = ' class="active"';
 	print("<ul id=\"playlist\">\n");
-	foreach (getFiles() as $entry) {
+	foreach (getFiles($directory) as $entry) {
 		$textfile = "../Archiv/".basename($entry, ".mp3").".txt";
-		print('  <li'.$active.'><a href="'.$_SERVER['SCRIPT_NAME']."?d=".$entry.'">');
+		print('  <li'.$active.'><a href="'.$_SERVER['SCRIPT_NAME']."?f=".filename_obfuscate($entry).'">');
 		if (file_exists($textfile)) {
 			readfile($textfile);
 		} else {
@@ -90,9 +129,101 @@ function showList()
 	print("</ul>\n");
 }
 
-// TODO: Download handler.
+/**
+ * Obfuscate a file name.
+ * 
+ * @param string $filename
+ * @return string
+ */
+function filename_obfuscate($filename)
+{
+	$encrypted = base64_encode($filename);
+	// Replace trailing = by number / count
+	$tail = preg_replace('/=*$/', "", $encrypted);
+	$encrypted .= sizeof($encrypted) - sizeof($tail);
+	
+	return $encrypted;
+}
 
-function getFiles($path = '../Archiv')
+/**
+ * Decrypt a file name from a request.
+ * 
+ * @param string $filename
+ * @return NULL|string
+ */
+function filename_decrypt($filename)
+{
+	if (sizeof($filename < 2)) {
+		return NULL;
+	}
+	$count = substr($filename, -1);
+	if (! is_int($count)) {
+		return NULL;
+	}
+	$filename = substr_replace($filename, '', -1, 1);
+	for ($i = 0; $i < $count; $i ++) {
+		$filename .= "=";
+	}
+	$decrypted = base64_decode($filename);
+
+	return $decrypted;
+}
+
+/**
+ * Provide the user with a download form.
+ * 
+ * @param string $filename
+ * @return boolean
+ */
+function downloadFile($filename)
+{
+	// Decrypt the file name.
+	$filename = filename_decrypt($filename);
+	$filename = $searchDirectory.DIRECTORY_SEPARATOR.$filename;
+	// Check that file exists
+	// Check that the file has the correct extension. Re-use global value.
+	if (file_exists($filename)) {
+		// Get the information about the file
+		$fileInfo = pathinfo($filename);
+		
+		// Check to ensure the file is allowed before returning the results
+		if( in_array($fileInfo['extension'], $allowedExtensions) ) {
+			// Return file.
+			// the file name of the download
+			$public_name = basename($filename);
+
+			// get the file's mime type to send the correct content type header
+			$finfo = finfo_open(FILEINFO_MIME_TYPE);
+			$mime_type = finfo_file($finfo, $filename);
+			
+			// send the headers
+			header("Cache-Control: no-cache, must-revalidate");
+			header("Pragma: no-cache"); //keeps ie happy
+			header("Content-Disposition: attachment; filename=$public_name;");
+			header("Content-Type: $mime_type");
+			header('Content-Length: '.filesize($filename));
+			header('Content-Transfer-Encoding: binary');
+			
+			// stream the file
+			$fp = fopen($filename, 'rb');
+			ob_end_clean(); //required here or large files will not work
+			fpassthru($fp);
+		} else {
+			header("Unsupported Media Type", true, 415);
+			return;
+		}
+	} else {
+		header("Not Found", true, 404);
+		return;
+	}
+}
+
+/**
+ * Get the list of files
+ * 
+ * @param string $path
+ */
+function getFiles($path)
 {
 	$entries = array();
 	// Open the path set
@@ -106,17 +237,16 @@ function getFiles($path = '../Archiv')
 			}
 
 			// Check to see if the file is a directory
-			if( is_dir($path.'/'.$file) ) {
+			if( is_dir($path.DIRECTORY_SEPARATOR.$file) ) {
+				// do not run recursively.
 				continue;
 			} else {
 				// Get the information about the file
 				$fileInfo = pathinfo($file);
 
-				// Set multiple extension types that are allowed
-				$allowedExtensions = array('mp3');
-
 				// Check to ensure the file is allowed before returning the results
 				if( in_array($fileInfo['extension'], $allowedExtensions) ) {
+					$file = substr($file, sizeof($searchDirectory));
 					array_push($entries, $file);
 				}
 			}
@@ -131,7 +261,27 @@ function getFiles($path = '../Archiv')
 		print("<p>Error reading directory ".$path."</p>\n");
 	}
 	return $entries;
-} 
+}
+
+/**
+ * Show the download rules
+ */
+function show_rules()
+{
+?>
+<div>Die Dateien sind nur Nutzern, die aus dem internen Bereich kommen zugänglich.
+Bitte zunächst anmelden und dort den Links zurück zu dieser Seite folgen.</div>
+<?php
+}
+
+/**
+ * Show the HTML footer
+ */
+function show_footer()
+{
 ?>
 	</body>
 </html>
+<?php
+}
+?>
