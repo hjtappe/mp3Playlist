@@ -9,7 +9,14 @@ session_start();
  */
 function searchDirectory()
 {
-	$dir = "../Archiv";
+	$dir = ".";
+	// read a configuration file if it exists.
+	if (file_exists("config.inc.php")) {
+		require_once 'config.inc.php';
+	}
+	if (isset($config['searchDir'])) {
+		$dir = $config['searchDir'];
+	}
 
 	$dir = preg_replace('/\/*$/', "", $dir);
 	return $dir;
@@ -103,7 +110,7 @@ if (isset($_SESSION['validated']) && ("true" == $_SESSION['validated'])) {
 	// Check if this is a download request
 	if (isset($_REQUEST['f'])) {
 		// If the session contains the value, allow a download / stream
-		downloadFile($_REQUEST['f']);
+		downloadFile($_REQUEST['f'], searchDirectory());
 	} else {
 		// Show a list which streams the file to the browser. No display of direct URLs.
 		show_header();
@@ -124,20 +131,26 @@ if (isset($_SESSION['validated']) && ("true" == $_SESSION['validated'])) {
  */
 function showList($directory)
 {
+	$files = getFiles($directory, $directory);
+	
 	$active = ' class="active"';
-	print("<ul id=\"playlist\">\n");
-	foreach (getFiles($directory) as $entry) {
-		$textfile = searchDirectory().DIRECTORY_SEPARATOR.basename($entry, ".mp3").".txt";
-		print('  <li'.$active.'><a href="'.$_SERVER['SCRIPT_NAME']."?f=".filename_obfuscate($entry).'">');
-		if (file_exists($textfile)) {
-			readfile($textfile);
-		} else {
-			print($entry);
+	if (count($files) < 1) {
+		print "<p>No files found.</p>\n";
+	} else {
+		print("<ul id=\"playlist\">\n");
+		foreach ($files as $entry) {
+			$textfile = $directory.DIRECTORY_SEPARATOR.basename($entry, ".mp3").".txt";
+			print('  <li'.$active.'><a href="'.$_SERVER['SCRIPT_NAME']."?f=".filename_obfuscate($entry).'">');
+			if (file_exists($textfile)) {
+				readfile($textfile);
+			} else {
+				print($entry);
+			}
+			print('</a></li>'."\n");
+			$active = "";
 		}
-		print('</a></li>'."\n");
-		$active = "";
+		print("</ul>\n");
 	}
-	print("</ul>\n");
 }
 
 /**
@@ -184,13 +197,14 @@ function filename_decrypt($filename)
  * Provide the user with a download form.
  * 
  * @param string $filename
+ * @param string $searchDirectory
  * @return boolean
  */
-function downloadFile($filename)
+function downloadFile($filename, $searchDirectory)
 {
 	// Decrypt the file name.
 	$filename = filename_decrypt($filename);
-	$filename = searchDirectory().DIRECTORY_SEPARATOR.$filename;
+	$filename = $searchDirectory.DIRECTORY_SEPARATOR.$filename;
 	// Check that file exists
 	// Check that the file has the correct extension. Re-use global value.
 	if (file_exists($filename)) {
@@ -233,8 +247,9 @@ function downloadFile($filename)
  * Get the list of files
  * 
  * @param string $path
+ * @param string $searchDirectory
  */
-function getFiles($path)
+function getFiles($path, $searchDirectory)
 {
 	$entries = array();
 	// Open the path set
@@ -257,7 +272,7 @@ function getFiles($path)
 
 				// Check to ensure the file is allowed before returning the results
 				if (in_array($fileInfo['extension'], allowedExtensions()) ) {
-					$filename = substr($path.DIRECTORY_SEPARATOR.$filename, strlen(searchDirectory().DIRECTORY_SEPARATOR));
+					$filename = substr($path.DIRECTORY_SEPARATOR.$filename, strlen($searchDirectory.DIRECTORY_SEPARATOR));
 					array_push($entries, $filename);
 				}
 			}
