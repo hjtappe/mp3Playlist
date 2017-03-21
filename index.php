@@ -66,8 +66,9 @@ function show_header()
 	<meta name="language" content="de" />
 	<title>Liste der Aufnahmen</title>
 	<style type="text/css">
-#playlist,audio{background:#888888;width:400px;padding:20px;}
+#playlist,audio{background:#888888;width:90%;padding:20px;}
 .active a{color:#5DB0E6;text-decoration:none;}
+ul {list-style-type:none;}
 li a{color:#eeeedd;background:#333;padding:5px;display:block;}
 li a:hover{text-decoration:none;}
 	</style>
@@ -99,7 +100,9 @@ session_name(SESSION_COOKIE_NAME);
 // Check session and / or referrer.
 if (!isset($_SESSION['validated']) || ("true" != $_SESSION['validated'])) {
 	if (isset($_ENV["REFERRER"])) {
-		if (preg_match(allowedRedirect(), $_ENV["REFERRER"])) {
+		if (preg_match(allowedRedirect(), $_ENV["REFERRER"]) ||
+			$_ENV["SERVER_ADDR"] == '127.0.0.1'
+		) {
 			$_SESSION['validated'] = "true";
 		}
 	}
@@ -142,7 +145,10 @@ function showList($directory)
 			$textfile = $directory.DIRECTORY_SEPARATOR.basename($entry, ".mp3").".txt";
 			print('  <li'.$active.'><a href="'.$_SERVER['SCRIPT_NAME']."?f=".filename_obfuscate($entry).'">');
 			if (file_exists($textfile)) {
-				readfile($textfile);
+				$info = file_get_contents($textfile);
+				$info = preg_replace("/\r*\n *$/", "", $info);
+				$info = preg_replace("/\r*\n/", " | ", $info);
+				print $info."\n";
 			} else {
 				print($entry);
 			}
