@@ -9,8 +9,10 @@ session_start();
  */
 function searchDirectory()
 {
-	return '.';
-	return '../Archiv';
+	$dir = "../Archiv";
+
+	$dir = preg_replace('/\/*$/', "", $dir);
+	return $dir;
 }
 
 /**
@@ -95,7 +97,6 @@ if (!isset($_SESSION['validated']) || ("true" != $_SESSION['validated'])) {
 		}
 	}
 }
-$_SESSION['validated'] = "true";
 
 // Show the list for download after successful validation
 if (isset($_SESSION['validated']) && ("true" == $_SESSION['validated'])) {
@@ -126,7 +127,7 @@ function showList($directory)
 	$active = ' class="active"';
 	print("<ul id=\"playlist\">\n");
 	foreach (getFiles($directory) as $entry) {
-		$textfile = "../Archiv/".basename($entry, ".mp3").".txt";
+		$textfile = searchDirectory().DIRECTORY_SEPARATOR.basename($entry, ".mp3").".txt";
 		print('  <li'.$active.'><a href="'.$_SERVER['SCRIPT_NAME']."?f=".filename_obfuscate($entry).'">');
 		if (file_exists($textfile)) {
 			readfile($textfile);
@@ -150,8 +151,9 @@ function filename_obfuscate($filename)
 	$encrypted = base64_encode($filename);
 	// Replace trailing = by number / count
 	$tail = preg_replace('/=*$/', "", $encrypted);
-	$encrypted = $tail.(strlen($encrypted) - strlen($tail));
-	
+	$tail = strrev($tail);
+	$encrypted = $tail.strtoupper(chr(strlen($encrypted) - strlen($tail) + ord("A")));
+
 	return $encrypted;
 }
 
@@ -164,13 +166,12 @@ function filename_obfuscate($filename)
 function filename_decrypt($filename)
 {
 	if (strlen($filename) < 2) {
+		// echo "filename too short\n";
 		return NULL;
 	}
-	$count = substr($filename, -1);
-	if (! is_int($count)) {
-		return NULL;
-	}
+	$count = ord(substr($filename, -1)) - ord("A");
 	$filename = substr_replace($filename, '', -1, 1);
+	$filename = strrev($filename);
 	for ($i = 0; $i < $count; $i ++) {
 		$filename .= "=";
 	}
@@ -207,12 +208,12 @@ function downloadFile($filename)
 			$mime_type = finfo_file($finfo, $filename);
 			
 			// send the headers
-			header("Cache-Control: no-cache, must-revalidate");
-			header("Pragma: no-cache"); //keeps ie happy
-			header("Content-Disposition: attachment; filename=$public_name;");
-			header("Content-Type: $mime_type");
+			header("Content-Type: ".$mime_type);
+			header("Content-Disposition: attachment; filename=\"".$public_name."\";");
 			header('Content-Length: '.filesize($filename));
 			header('Content-Transfer-Encoding: binary');
+			header("Cache-Control: no-cache, must-revalidate");
+			header("Pragma: no-cache"); //keeps ie happy
 			
 			// stream the file
 			$fp = fopen($filename, 'rb');
@@ -240,24 +241,24 @@ function getFiles($path)
 	if ($handle = opendir($path)) {
 
 		// Loop through each file in the directory
-		while ( false !== ($file = readdir($handle)) ) {
+		while (false !== ($filename = readdir($handle))) {
 			// Remove the . and .. directories
-			if ( $file == "." || $file == ".." ) {
+			if ($filename == "." || $filename == "..") {
 				continue;
 			}
 
 			// Check to see if the file is a directory
-			if (is_dir($path.DIRECTORY_SEPARATOR.$file) ) {
+			if (is_dir($path.DIRECTORY_SEPARATOR.$filename)) {
 				// do not run recursively.
 				continue;
 			} else {
 				// Get the information about the file
-				$fileInfo = pathinfo($file);
+				$fileInfo = pathinfo($path.DIRECTORY_SEPARATOR.$filename);
 
 				// Check to ensure the file is allowed before returning the results
 				if (in_array($fileInfo['extension'], allowedExtensions()) ) {
-					$file = substr($file, strlen(searchDirectory()));
-					array_push($entries, $file);
+					$filename = substr($path.DIRECTORY_SEPARATOR.$filename, strlen(searchDirectory().DIRECTORY_SEPARATOR));
+					array_push($entries, $filename);
 				}
 			}
 		}
