@@ -33,16 +33,6 @@ function allowedRedirect()
 }
 
 /**
- * Set multiple extension types that are allowed
- *
- * @return string[]
- */
-function allowedExtensions()
-{
-	return array('mp3');
-}
-
-/**
  * Cookie Name
  *
  * @var string
@@ -99,12 +89,11 @@ session_name(SESSION_COOKIE_NAME);
 
 // Check session and / or referrer.
 if (!isset($_SESSION['validated']) || ("true" != $_SESSION['validated'])) {
-	if (isset($_ENV["REFERRER"])) {
-		if (preg_match(allowedRedirect(), $_ENV["REFERRER"]) ||
-			$_ENV["SERVER_ADDR"] == '127.0.0.1'
-		) {
-			$_SESSION['validated'] = "true";
-		}
+	if (($_SERVER["SERVER_ADDR"] == "127.0.0.1") ||
+			($_SERVER["LOCAL_ADDR"] == "127.0.0.1") ||
+			(isset($_SERVER["REFERRER"]) &&
+			preg_match(allowedRedirect(), $_SERVER["REFERRER"]))) {
+		$_SESSION['validated'] = "true";
 	}
 }
 
@@ -134,7 +123,7 @@ if (isset($_SESSION['validated']) && ("true" == $_SESSION['validated'])) {
  */
 function showList($directory)
 {
-	$files = getFiles($directory, $directory);
+	$files = getMp3Files($directory, $directory);
 	
 	$active = ' class="active"';
 	if (count($files) < 1) {
@@ -144,11 +133,25 @@ function showList($directory)
 		foreach ($files as $entry) {
 			$textfile = $directory.DIRECTORY_SEPARATOR.basename($entry, ".mp3").".txt";
 			print('  <li'.$active.'><a href="'.$_SERVER['SCRIPT_NAME']."?f=".filename_obfuscate($entry).'">');
+			$mp3info = NULL;
+			if (function_exists(id3_get_tag)) {
+				$mp3info = id3_get_tag($entry);
+			}
 			if (file_exists($textfile)) {
 				$info = file_get_contents($textfile);
 				$info = preg_replace("/\r*\n *$/", "", $info);
 				$info = preg_replace("/\r*\n/", " | ", $info);
 				print $info."\n";
+			} elseif (is_array($mp3info) && count($mp3info) > 0) {
+				if (isset($mp3info["title"])) {
+					print($mp3info["title"]."\n");
+				}
+				if (isset($mp3info["artist"])) {
+					print(" | ".$mp3info["artist"]."\n");
+				}
+				if (isset($mp3info["comment"])) {
+					print(" | ".$mp3info["comment"]."\n");
+				}
 			} else {
 				print($entry);
 			}
@@ -218,7 +221,7 @@ function downloadFile($filename, $searchDirectory)
 		$fileInfo = pathinfo($filename);
 		
 		// Check to ensure the file is allowed before returning the results
-		if( in_array($fileInfo['extension'], allowedExtensions()) ) {
+		if ($fileInfo['extension'] == "mp3") {
 			// Return file.
 			// the file name of the download
 			$public_name = basename($filename);
@@ -255,7 +258,7 @@ function downloadFile($filename, $searchDirectory)
  * @param string $path
  * @param string $searchDirectory
  */
-function getFiles($path, $searchDirectory)
+function getMp3Files($path, $searchDirectory)
 {
 	$entries = array();
 	// Open the path set
@@ -276,8 +279,9 @@ function getFiles($path, $searchDirectory)
 				// Get the information about the file
 				$fileInfo = pathinfo($path.DIRECTORY_SEPARATOR.$filename);
 
-				// Check to ensure the file is allowed before returning the results
-				if (in_array($fileInfo['extension'], allowedExtensions()) ) {
+				// Check to ensure the file has the mp3 extension
+				// before returning the results
+				if ($fileInfo['extension'] == "mp3") {
 					$filename = substr($path.DIRECTORY_SEPARATOR.$filename, strlen($searchDirectory.DIRECTORY_SEPARATOR));
 					array_push($entries, $filename);
 				}
