@@ -29,7 +29,7 @@ function searchDirectory()
  */
 function allowedRedirect()
 {
-	return '/^https?:\/\/churchtools.stadtmission-mainz.de\/?q=churchwiki/';
+	return '/^https?:\/\/churchtools.stadtmission-mainz.de\/\?q=churchwiki/';
 }
 
 /**
@@ -91,8 +91,8 @@ session_name(SESSION_COOKIE_NAME);
 if (!isset($_SESSION['validated']) || ("true" != $_SESSION['validated'])) {
 	if (($_SERVER["SERVER_ADDR"] == "127.0.0.1") ||
 			($_SERVER["LOCAL_ADDR"] == "127.0.0.1") ||
-			(isset($_SERVER["REFERRER"]) &&
-			preg_match(allowedRedirect(), $_SERVER["REFERRER"]))) {
+			(isset($_SERVER["HTTP_REFERER"]) &&
+			preg_match(allowedRedirect(), $_SERVER["HTTP_REFERER"]))) {
 		$_SESSION['validated'] = "true";
 	}
 }
