@@ -29,7 +29,7 @@ function searchDirectory()
  */
 function allowedRedirect()
 {
-	return '/^https?:\/\/churchtools.stadtmission-mainz.de\/\?q=churchwiki/';
+	return '/(^https?:\/\/churchtools\.stadtmission-mainz\.de\/\?q=churchwiki)|(https?:\/\/www\.stadtmission-mainz\.de\/egroupware\/)/';
 }
 
 /**
@@ -43,13 +43,18 @@ define("SESSION_COOKIE_NAME", "mp3PlaylistSessionCookie");
 /**
  * Show the HTML header.
  */
-function show_header()
+function show_header($location = "")
 {
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
 
 <head>
+<?php
+	if (isset($location) && $location != "") {
+		print "\t<meta http-equiv=\"refresh\" content=\"".$location."\">\n";
+	}
+?>
 	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
 	<meta http-equiv="expires" content="0" />
 
@@ -111,7 +116,7 @@ if (isset($_SESSION['validated']) && ("true" == $_SESSION['validated'])) {
 		show_footer();
 	}
 } else {
-	show_header();
+	show_header("10; https://www.stadtmission-mainz.de/egroupware/index.php");
 	show_rules();
 	show_footer();
 }
