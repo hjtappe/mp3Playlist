@@ -22,8 +22,8 @@ fi
 FILENAME=`basename "${SSH_ORIGINAL_COMMAND}"`
 SUFFIX="${FILENAME##*.}"
 
-if [ "$SUFFIX" != "mp3" ]; then
-	echo >&2 "Only file names with *.mp3 suffix allowed."
+if [ "$SUFFIX" != "mp3" -o "$SUFFIX" != "txt" ]; then
+	echo >&2 "Only file names with *.mp3 or *.txt suffix allowed."
 	exit 1
 fi
 
