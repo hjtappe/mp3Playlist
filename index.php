@@ -84,7 +84,7 @@ function show_audio()
     	id="audio"
 		preload="auto"
 		controls
-		volume="0.7"
+		volume="1.0"
 		type="audio/mp3"></audio>
 <?php
 }
