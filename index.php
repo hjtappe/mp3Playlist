@@ -29,7 +29,7 @@ function searchDirectory()
  */
 function allowedRedirect()
 {
-	return '/(^https?:\/\/churchtools\.stadtmission-mainz\.de\/\?q=churchwiki)|(https?:\/\/www\.stadtmission-mainz\.de\/egroupware\/)/';
+	return '/(^https?:\/\/churchtools\.stadtmission-mainz\.de\/\?q=churchwiki)|(https?:\/\/www\.stadtmission-mainz\.de\/egroupware\/)|(https?:\/\/aufnahmen\.stadtmission-mainz\.de\/login)/';
 }
 
 /**
@@ -99,6 +99,8 @@ if (!isset($_SESSION['validated']) || ("true" != $_SESSION['validated'])) {
 			(isset($_SERVER["HTTP_REFERER"]) &&
 			preg_match(allowedRedirect(), $_SERVER["HTTP_REFERER"]))) {
 		$_SESSION['validated'] = "true";
+	#} else {
+	#	print ("<!--".$_SERVER["HTTP_REFERER"]."-->\n");
 	}
 }
 
