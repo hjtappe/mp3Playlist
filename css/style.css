@@ -1,0 +1,35 @@
+#playlist, div.download {
+	background: #888888;
+	width: 90%;
+	padding: 20px;
+}
+audio {
+	width: 90%;
+}
+div.download div {
+	background: #333;
+	padding: 5px;
+}
+.active a {
+	color: #5DB0E6;
+	text-decoration: none;
+}
+ul {
+	list-style-type: none;
+}
+li {
+	display: block;
+	padding: 5px;
+	background: #333;
+}
+a {
+	color: #eeeedd;
+	text-decoration: none;
+}
+li a:hover {
+	text-decoration: none;
+}
+img.download {
+	background: #888888;
+	width: 1em;
+}

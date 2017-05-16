@@ -60,13 +60,7 @@ function show_header($location = "")
 
 	<meta name="language" content="de" />
 	<title>Liste der Aufnahmen</title>
-	<style type="text/css">
-#playlist,audio{background:#888888;width:90%;padding:20px;}
-.active a{color:#5DB0E6;text-decoration:none;}
-ul {list-style-type:none;}
-li a{color:#eeeedd;background:#333;padding:5px;display:block;}
-li a:hover{text-decoration:none;}
-	</style>
+	<link rel="stylesheet" type="text/css" href="css/style.css"></link>
     <script type="text/javascript" src="js/jquery-1.12.4.min.js"></script>
     <script type="text/javascript" src="js/playlistHandler.js"></script>
 </head>
@@ -80,18 +74,29 @@ li a:hover{text-decoration:none;}
 function show_audio()
 {
 ?>
-    <audio
+	<div class="download">
+	<div>
+   	<audio
     	id="audio"
 		preload="auto"
 		controls
 		volume="1.0"
 		type="audio/mp3"></audio>
+	</div>
+	<div>
+		<a href="#" id="download" download target="_blank">
+			<img src="img/download.svg" alt="Download" class="download" />
+		Download: <span id="info"></span>
+		</a>
+	</div>
+	</div>
 <?php
 }
 
 // Setup the session.
 session_name(SESSION_COOKIE_NAME);
 
+$_SESSION['validated'] = "true";
 // Check session and / or referrer.
 if (!isset($_SESSION['validated']) || ("true" != $_SESSION['validated'])) {
 	if (($_SERVER["SERVER_ADDR"] == "127.0.0.1") ||
@@ -139,7 +144,10 @@ function showList($directory)
 		print("<ul id=\"playlist\">\n");
 		foreach ($files as $entry) {
 			$textfile = $directory.DIRECTORY_SEPARATOR.basename($entry, ".mp3").".txt";
-			print('  <li'.$active.'><a href="'.$_SERVER['SCRIPT_NAME']."?f=".filename_obfuscate($entry).'">');
+			$fileId = filename_obfuscate($entry);
+			$url = $_SERVER['SCRIPT_NAME']."?f=".$fileId;
+			print('  <li'.$active.'>');
+			print(' <a href="'.$url.'" id="'.$fileId.'" class="soundfile">');
 			$mp3info = NULL;
 			if (function_exists(id3_get_tag)) {
 				$mp3info = id3_get_tag($entry);
