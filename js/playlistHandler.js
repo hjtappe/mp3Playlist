@@ -20,11 +20,10 @@ function init(){
     playlist.find("a.soundfile").click(function(e){
         e.preventDefault();
         current = $(this).parent().index();
-		update($(this));
+		update(playlist.find("a.soundfile")[current]);
         play();
     });
 	// Continue and loop
-	/*
     audio[0].addEventListener("ended", function(e){
         current++;
         if (current >= tracks.length){
@@ -33,14 +32,14 @@ function init(){
 		update(playlist.find("a.soundfile")[current]);
         play();
     });
-	*/
 	// Load the first track
 	load(tracks[current].href, audio[0],
 		tracks[current].text);
 	// play immediately
     //play();
 }
-function update(anchor) {
+function update(a) {
+		anchor = $(a);
         link = anchor.attr("href");
         load(link, audio[0], anchor.text());
         par = anchor.parent();
