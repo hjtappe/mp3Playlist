@@ -7,8 +7,14 @@ audio {
 	width: 90%;
 	display: inline;
 }
-option, input, form {
+input, form {
 	display: inline;
+}
+#loopimage {
+	width: 24px;
+	height: 24px;
+	vertical-align: top;
+	background: #888888;
 }
 div.download div {
 	background: #333;
@@ -36,4 +42,7 @@ li a:hover {
 img.download {
 	background: #888888;
 	width: 1em;
+}
+li.active img.download {
+	background: #5DB0E6;
 }

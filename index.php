@@ -86,9 +86,7 @@ function show_audio()
 		controls
 		volume="1.0"
 		type="audio/mp3"></audio>
-	<form><option>
-		<input type="checkbox" name="loop" alt="loop" id="loop"></input>
-	</option></form>
+	<img src="img/noloop.svg" id="loopimage" class="" alt="Loop All" />
 	</div>
 	<div>
 		<a href="#" id="download" download target="_blank">

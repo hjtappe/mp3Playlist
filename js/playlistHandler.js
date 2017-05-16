@@ -23,9 +23,18 @@ function init(){
 		update(playlist.find("a.soundfile")[current]);
         play();
     });
+	// Manage the transitions in the loop checkbox
+	$("#loopimage").click(function() {
+		if ($('#loopimage').hasClass("checked")) {
+        	$(this).attr('src','img/noloop.svg');
+		} else {
+        	$(this).attr('src','img/loop.svg');
+		}
+		$('#loopimage').toggleClass("checked")
+    });
 	// Continue and loop
     audio[0].addEventListener("ended", function(e){
-		if ($('#loop').is(":checked")) {
+		if ($('#loopimage').hasClass("checked")) {
         	current++;
         	if (current >= tracks.length){
         	    current = 0;
