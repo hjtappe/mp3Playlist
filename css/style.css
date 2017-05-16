@@ -5,6 +5,10 @@
 }
 audio {
 	width: 90%;
+	display: inline;
+}
+option, input, form {
+	display: inline;
 }
 div.download div {
 	background: #333;

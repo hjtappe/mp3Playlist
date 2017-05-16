@@ -25,12 +25,14 @@ function init(){
     });
 	// Continue and loop
     audio[0].addEventListener("ended", function(e){
-        current++;
-        if (current >= tracks.length){
-            current = 0;
+		if ($('#loop').is(":checked")) {
+        	current++;
+        	if (current >= tracks.length){
+        	    current = 0;
+			}
+			update(playlist.find("a.soundfile")[current]);
+        	play();
 		}
-		update(playlist.find("a.soundfile")[current]);
-        play();
     });
 	// Load the first track
 	load(tracks[current].href, audio[0],

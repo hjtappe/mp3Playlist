@@ -29,7 +29,11 @@ function searchDirectory()
  */
 function allowedRedirect()
 {
-	return '/(^https?:\/\/churchtools\.stadtmission-mainz\.de\/\?q=churchwiki)|(https?:\/\/www\.stadtmission-mainz\.de\/egroupware\/)|(https?:\/\/aufnahmen\.stadtmission-mainz\.de\/login)/';
+	if (isset($config['redirRegex'])) {
+		return $config['redirRegex'];
+	} else {
+		return '/No Redirect Registered/';
+	}
 }
 
 /**
@@ -82,6 +86,9 @@ function show_audio()
 		controls
 		volume="1.0"
 		type="audio/mp3"></audio>
+	<form><option>
+		<input type="checkbox" name="loop" alt="loop" id="loop"></input>
+	</option></form>
 	</div>
 	<div>
 		<a href="#" id="download" download target="_blank">
@@ -96,7 +103,6 @@ function show_audio()
 // Setup the session.
 session_name(SESSION_COOKIE_NAME);
 
-$_SESSION['validated'] = "true";
 // Check session and / or referrer.
 if (!isset($_SESSION['validated']) || ("true" != $_SESSION['validated'])) {
 	if (($_SERVER["SERVER_ADDR"] == "127.0.0.1") ||
