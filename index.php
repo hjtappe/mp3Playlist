@@ -146,31 +146,37 @@ function showList($directory)
 			$textfile = $directory.DIRECTORY_SEPARATOR.basename($entry, ".mp3").".txt";
 			$fileId = filename_obfuscate($entry);
 			$url = $_SERVER['SCRIPT_NAME']."?f=".$fileId;
-			print('  <li'.$active.'>');
-			print(' <a href="'.$url.'" id="'.$fileId.'" class="soundfile">');
 			$mp3info = NULL;
 			if (function_exists(id3_get_tag)) {
 				$mp3info = id3_get_tag($entry);
 			}
+			$info = "";
 			if (file_exists($textfile)) {
 				$info = file_get_contents($textfile);
 				$info = preg_replace("/\r*\n *$/", "", $info);
 				$info = preg_replace("/\r*\n/", " | ", $info);
-				print $info."\n";
 			} elseif (is_array($mp3info) && count($mp3info) > 0) {
 				if (isset($mp3info["title"])) {
-					print($mp3info["title"]."\n");
+					$info .= $mp3info["title"]."\n";
 				}
 				if (isset($mp3info["artist"])) {
-					print(" | ".$mp3info["artist"]."\n");
+					$info .= " | ".$mp3info["artist"]."\n";
 				}
 				if (isset($mp3info["comment"])) {
-					print(" | ".$mp3info["comment"]."\n");
+					$info .= " | ".$mp3info["comment"]."\n";
 				}
 			} else {
-				print($entry);
+				$info = $entry;
 			}
-			print('</a></li>'."\n");
+			print('  <li'.$active.'>'."\n");
+			print('    <a href="'.$url.'" download target="_blank">'."\n");
+			print('	     <img src="img/download.svg" alt="Download '.
+				$info.'" class="download" />'."\n");
+			print('    </a>'."\n");
+			print('    <a href="'.$url.'" id="'.$fileId.'" class="soundfile">'."\n");
+			print($info."\n");
+			print('    </a>'."\n");
+			print('  </li>'."\n");
 			$active = "";
 		}
 		print("</ul>\n");

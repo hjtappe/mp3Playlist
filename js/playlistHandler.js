@@ -17,7 +17,7 @@ function init(){
     tracks = playlist.find("a.soundfile");
     audio[0].volume = 0.70;
 	// Register the click functions
-    playlist.find("a").click(function(e){
+    playlist.find("a.soundfile").click(function(e){
         e.preventDefault();
         current = $(this).parent().index();
 		update($(this));
@@ -30,7 +30,7 @@ function init(){
         if (current >= tracks.length){
             current = 0;
 		}
-		update(playlist.find("a.soundfile").get(current));
+		update(playlist.find("a.soundfile")[current]);
         play();
     });
 	*/
