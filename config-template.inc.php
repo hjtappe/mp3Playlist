@@ -11,10 +11,10 @@ $config['loginpage'] = dirname($_SERVER['SCRIPT_NAME']).'/login/';
 
 $config['redirRegex'] = '/';
 $config['redirRegex'] .=
-	'https?:\/\/'.preg_quote($_SERVER['HTTP_HOST'].dirname($_SERVER['SCRIPT_NAME']).'/login/', '/');
+	'(^https?:\/\/'.preg_quote($_SERVER['HTTP_HOST'].dirname($_SERVER['SCRIPT_NAME']).'/login/', '/').')';
 // $config['redirRegex'] .=
-//   '|(^https?:\/\/www\.domain1\.com\/\?q=whatever)';
+//   '|(^https?:\/\/'.preg_quote('www.domain1.com/?q=whatever', '/').')';
 // $config['redirRegex'] .=
-//   '|(https?:\/\/www\.domain2\.org\/whateverelse\/)/';
+//   '|(^https?:\/\/'.preg_quote('www.domain2.org/whateverelse/', '/').')';
 $config['redirRegex'] .= '/';
 ?>

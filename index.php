@@ -108,9 +108,14 @@ function show_audio()
 
 // Check session and / or referrer.
 if (!isset($_SESSION['validated']) || ("true" != $_SESSION['validated'])) {
-	if (isset($_SERVER["HTTP_REFERER"]) &&
-			preg_match(allowedRedirect(), $_SERVER["HTTP_REFERER"])) {
-		$_SESSION['validated'] = "true";
+	if (isset($_SERVER["HTTP_REFERER"])) {
+		if (preg_match(allowedRedirect(), $_SERVER["HTTP_REFERER"])) {
+			$_SESSION['validated'] = "true";
+		} else {
+			error_log('Comparing "'.$_SERVER["HTTP_REFERER"].'" against "'.allowedRedirect().'"');
+		}
+	} else {
+		error_log('$_SERVER["HTTP_REFERER"] is not set.');
 	}
 }
 
