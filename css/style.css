@@ -1,3 +1,7 @@
+div {
+	background: #888888;
+	color: #EEEEEE;
+}
 #playlist, div.download {
 	background: #888888;
 	width: 90%;

@@ -1,4 +1,20 @@
 <?php
+/**
+ * Cookie Name
+ *
+ * @var string
+ */
+define("SESSION_COOKIE_NAME", "mp3PlaylistSessionCookie");
+
+$config = array();
+// read a configuration file if it exists.
+if (file_exists("config.inc.php")) {
+	require_once 'config.inc.php';
+}
+
+// Setup the session.
+session_name(SESSION_COOKIE_NAME);
+
 // Start the session
 session_start();
 
@@ -9,11 +25,9 @@ session_start();
  */
 function searchDirectory()
 {
+	global $config;
+
 	$dir = ".";
-	// read a configuration file if it exists.
-	if (file_exists("config.inc.php")) {
-		require_once 'config.inc.php';
-	}
 	if (isset($config['searchDir'])) {
 		$dir = $config['searchDir'];
 	}
@@ -29,6 +43,8 @@ function searchDirectory()
  */
 function allowedRedirect()
 {
+	global $config;
+
 	if (isset($config['redirRegex'])) {
 		return $config['redirRegex'];
 	} else {
@@ -37,20 +53,12 @@ function allowedRedirect()
 }
 
 /**
- * Cookie Name
- *
- * @var string
- */
-define("SESSION_COOKIE_NAME", "mp3PlaylistSessionCookie");
-
-
-/**
  * Show the HTML header.
  */
 function show_header($location = "")
 {
 ?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
 
 <head>
@@ -64,7 +72,7 @@ function show_header($location = "")
 
 	<meta name="language" content="de" />
 	<title>Liste der Aufnahmen</title>
-	<link rel="stylesheet" type="text/css" href="css/style.css"></link>
+	<link rel="stylesheet" type="text/css" href="css/style.css" />
     <script type="text/javascript" src="js/jquery-1.12.4.min.js"></script>
     <script type="text/javascript" src="js/playlistHandler.js"></script>
 </head>
@@ -98,18 +106,11 @@ function show_audio()
 <?php
 }
 
-// Setup the session.
-session_name(SESSION_COOKIE_NAME);
-
 // Check session and / or referrer.
 if (!isset($_SESSION['validated']) || ("true" != $_SESSION['validated'])) {
-	if (($_SERVER["SERVER_ADDR"] == "127.0.0.1") ||
-			($_SERVER["LOCAL_ADDR"] == "127.0.0.1") ||
-			(isset($_SERVER["HTTP_REFERER"]) &&
-			preg_match(allowedRedirect(), $_SERVER["HTTP_REFERER"]))) {
+	if (isset($_SERVER["HTTP_REFERER"]) &&
+			preg_match(allowedRedirect(), $_SERVER["HTTP_REFERER"])) {
 		$_SESSION['validated'] = "true";
-	#} else {
-	#	print ("<!--".$_SERVER["HTTP_REFERER"]."-->\n");
 	}
 }
 
@@ -127,7 +128,9 @@ if (isset($_SESSION['validated']) && ("true" == $_SESSION['validated'])) {
 		show_footer();
 	}
 } else {
-	show_header("10; https://www.stadtmission-mainz.de/egroupware/index.php");
+	if (isset($config['loginpage'])) {
+		show_header("10; ".$config['loginpage']);
+	}
 	show_rules();
 	show_footer();
 }
@@ -151,7 +154,7 @@ function showList($directory)
 			$fileId = filename_obfuscate($entry);
 			$url = $_SERVER['SCRIPT_NAME']."?f=".$fileId;
 			$mp3info = NULL;
-			if (function_exists(id3_get_tag)) {
+			if (function_exists("id3_get_tag")) {
 				$mp3info = id3_get_tag($entry);
 			}
 			$info = "";
@@ -329,10 +332,20 @@ function getMp3Files($path, $searchDirectory)
  */
 function show_rules()
 {
-?>
-<div>Die Dateien sind nur Nutzern, die aus dem internen Bereich kommen zugänglich.
-Bitte zunächst anmelden und dort den Links zurück zu dieser Seite folgen.</div>
-<?php
+	global $config;
+
+	print("<div>\n");
+	if (isset($config['loginpage'])) {
+		print('<a href="'.$config['loginpage'].'/">');
+	}
+	print("Die Dateien sind nur Nutzern, die aus dem internen Bereich kommen zugänglich.\n");
+	print("Bitte zunächst ");
+	print("anmelden und dort dem Link zurück zu dieser Seite folgen");
+	if (isset($config['loginpage'])) {
+		print("</a>");
+	}
+	print(".\n");
+	print("</div>\n");
 }
 
 /**
