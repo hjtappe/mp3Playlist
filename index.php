@@ -273,6 +273,11 @@ function downloadFile($filename, $searchDirectory)
 			
 			// stream the file
 			$fp = fopen($filename, 'rb');
+			// Allow activities in another window, such as downloading another file
+			session_write_close();
+			// Handle timeouts
+			@ignore_user_abort();
+			@set_time_limit(0);
 			ob_end_clean(); //required here or large files will not work
 			fpassthru($fp);
 		} else {
