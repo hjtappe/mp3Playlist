@@ -6,6 +6,9 @@
  */
 define("SESSION_COOKIE_NAME", "mp3PlaylistSessionCookie");
 
+// include getID3() library (can be in a different directory if full path is specified)
+require_once('getid3/autoload.php');
+
 $config = array();
 // read a configuration file if it exists.
 if (file_exists("config.inc.php")) {
@@ -258,6 +261,13 @@ function downloadFile($filename, $searchDirectory)
 			// Return file.
 			// the file name of the download
 			$public_name = basename($filename);
+
+			// Get file duration, to set timeout
+			$getID3 = new getID3;
+			$fileInfo = $getID3->analyze($filename);
+			$playtime = $fileInfo['playtime_seconds'];
+			// error_log('Duration (s): '.((int) ($playtime * 1.1)));
+			set_time_limit((int)($playtime * 1.1));
 
 			// get the file's mime type to send the correct content type header
 			$finfo = finfo_open(FILEINFO_MIME_TYPE);
