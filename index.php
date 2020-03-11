@@ -6,9 +6,6 @@
  */
 define("SESSION_COOKIE_NAME", "mp3PlaylistSessionCookie");
 
-// include getID3() library (can be in a different directory if full path is specified)
-require_once('getid3/autoload.php');
-
 $config = array();
 // read a configuration file if it exists.
 if (file_exists("config.inc.php")) {
@@ -76,8 +73,8 @@ function show_header($location = "")
 	<meta name="language" content="de" />
 	<title>Liste der Aufnahmen</title>
 	<link rel="stylesheet" type="text/css" href="css/style.css" />
-    <script type="text/javascript" src="js/jquery-1.12.4.min.js"></script>
-    <script type="text/javascript" src="js/playlistHandler.js"></script>
+	<script type="text/javascript" src="js/jquery-1.12.4.min.js"></script>
+	<script type="text/javascript" src="js/playlistHandler.js"></script>
 </head>
 <body>
 <?php
@@ -92,7 +89,7 @@ function show_audio()
 	<div class="download">
 	<div>
    	<audio
-    	id="audio"
+		id="audio"
 		preload="auto"
 		controls
 		volume="1.0"
@@ -184,13 +181,13 @@ function showList($directory)
 				$info = $entry;
 			}
 			print('  <li'.$active.'>'."\n");
-			print('    <a href="'.$url.'" download target="_blank">'."\n");
-			print('	     <img src="img/download.svg" alt="Download '.
+			print('	<a href="'.$url.'" download target="_blank">'."\n");
+			print('		 <img src="img/download.svg" alt="Download '.
 				$info.'" class="download" />'."\n");
-			print('    </a>'."\n");
-			print('    <a href="'.$url.'" id="'.$fileId.'" class="soundfile">'."\n");
+			print('	</a>'."\n");
+			print('	<a href="'.$url.'" id="'.$fileId.'" class="soundfile">'."\n");
 			print($info."\n");
-			print('    </a>'."\n");
+			print('	</a>'."\n");
 			print('  </li>'."\n");
 			$active = "";
 		}
@@ -260,36 +257,114 @@ function downloadFile($filename, $searchDirectory)
 		if ($fileInfo['extension'] == "mp3") {
 			// Return file.
 			// the file name of the download
-			$public_name = basename($filename);
-
-			// Get file duration, to set timeout
-			$getID3 = new getID3;
-			$fileInfo = $getID3->analyze($filename);
-			$playtime = $fileInfo['playtime_seconds'];
-			// error_log('Duration (s): '.((int) ($playtime * 1.1)));
-			set_time_limit((int)($playtime * 1.1));
+			// https://www.php.net/manual/en/function.fread.php#84115
+			// workaround for IE filename bug with multiple periods / multiple dots in filename
+			// that adds square brackets to filename - eg. setup.abc.exe becomes setup[1].abc.exe
+			$public_name = (strstr($_SERVER['HTTP_USER_AGENT'], 'MSIE')) ?
+                  preg_replace('/\./', '%2e', $fileInfo['basename'], substr_count($fileInfo['basename'], '.') - 1) :
+                  $fileInfo['basename'];
 
 			// get the file's mime type to send the correct content type header
 			$finfo = finfo_open(FILEINFO_MIME_TYPE);
 			$mime_type = finfo_file($finfo, $filename);
-			
-			// send the headers
-			header("Content-Type: ".$mime_type);
-			header("Content-Disposition: attachment; filename=\"".$public_name."\";");
-			header('Content-Length: '.filesize($filename));
-			header('Content-Transfer-Encoding: binary');
-			header("Cache-Control: no-cache, must-revalidate");
-			header("Pragma: no-cache"); //keeps ie happy
-			
-			// stream the file
-			$fp = fopen($filename, 'rb');
-			// Allow activities in another window, such as downloading another file
-			session_write_close();
-			// Handle timeouts
-			@ignore_user_abort();
-			@set_time_limit(0);
-			ob_end_clean(); //required here or large files will not work
-			fpassthru($fp);
+
+			$bytes_total = filesize($filename);
+			if (isset($_SERVER['HTTP_RANGE'])) {
+				// https://stackoverflow.com/questions/1995589/html5-audio-safari-live-broadcast-vs-not
+				//
+				// In summary, it appears that Safari (or more accurately,
+				// QuickTime, which Safari uses to handle all media and media
+				// downloading) has a completely braindamaged approach to
+				// downloading media.
+				if (!preg_match('/^bytes=\d*-\d*(,\d*-\d*)*$/', $_SERVER['HTTP_RANGE'])) {
+					error_log('416, bytes not found in '.$_SERVER['HTTP_RANGE']);
+					header('HTTP/1.1 416 Requested Range Not Satisfiable');
+					header('Content-Range: bytes */'.$bytes_total); // Required in 416.
+					exit;
+				}
+
+				$ranges = explode(',', substr($_SERVER['HTTP_RANGE'], 6));
+				foreach ($ranges as $range) {
+					$parts = explode('-', $range, 2);
+					$seek_start = $parts[0]; // If this is empty, this should be 0.
+					$seek_end = $parts[1]; // If this is empty or greater than than filelength - 1, this should be filelength - 1.
+
+					// set start and end based on range (if set), else set defaults
+					// also check for invalid ranges.
+					$seek_end = (empty($seek_end)) ? ($bytes_total - 1) : min(abs(intval($seek_end)), ($bytes_total - 1));
+					$seek_start = (empty($seek_start) || $seek_end < abs(intval($seek_start))) ? 0 : max(abs(intval($seek_start)),0);
+
+					if ($seek_start > $seek_end) {
+						error_log('416, start > end in '.$_SERVER['HTTP_RANGE']);
+						header('HTTP/1.1 416 Requested Range Not Satisfiable');
+						header('Content-Range: bytes */'.$bytes_total); // Required in 416.
+						exit;
+					}
+
+					// open the file
+					$fp = fopen($filename, 'rb');
+					if (false === $fp) {
+						header('HTTP/1.1 400 Not Found');
+						flush();
+						ob_flush();
+						exit;
+					}
+
+					// Only send partial content header if downloading a piece of the file (IE workaround)
+					if ($seek_start > 0 || $seek_end < ($bytes_total - 1))
+					{
+						header('HTTP/1.1 206 Partial Content');
+					}
+					header('Accept-Ranges: bytes');
+					header('Content-Range: bytes '.$seek_start.'-'.$seek_end.'/'.$bytes_total);
+					// headers for IE Bugs (is this necessary?)
+					header("Cache-Control: no-cache, must-revalidate");
+					header("Pragma: no-cache"); //keeps ie happy
+					header('Content-Type: '.$mime_type);
+					header('Content-Transfer-Encoding: binary');
+					header('Content-Length: '.($seek_end - $seek_start + 1));
+					// seek to start of missing part
+					fseek($fp, $seek_start);
+					// reset time limit for big files
+					@ignore_user_abort();
+					@set_time_limit(0);
+					// start buffered download
+					while(!feof($fp)) {
+						print(fread($fp, 1024*8));
+						flush();
+						ob_flush();
+					}
+					fclose($fp);
+					// Multiple ranges not supported.
+					exit;
+				}
+			} else {
+				// stream the file
+				$fp = fopen($filename, 'rb');
+				if (false === $fp) {
+					header('HTTP/1.1 400 Not Found');
+					flush();
+					ob_flush();
+					exit;
+				}
+				// send the headers
+				header('HTTP/1.1 200 OK');
+				header('Accept-Ranges: bytes');
+				header("Content-Type: ".$mime_type);
+				header("Content-Disposition: attachment; filename=\"".$public_name."\";");
+				header('Content-Length: '.$bytes_total);
+				header('Content-Transfer-Encoding: binary');
+				header("Cache-Control: no-cache, must-revalidate");
+				header("Pragma: no-cache"); //keeps ie happy
+
+				// Handle timeouts
+				@ignore_user_abort();
+				@set_time_limit(0);
+				// Allow activities in another window, such as downloading another file
+				session_write_close();
+				ob_end_clean(); //required here or large files will not work
+				fpassthru($fp);
+			}
 		} else {
 			header("Unsupported Media Type", true, 415);
 			return;
